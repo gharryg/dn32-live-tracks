@@ -10,7 +10,7 @@ import atexit
 def main():
     parser = argparse.ArgumentParser(description='A tool to extract only what you want from (potentially many) multichannel WAV files.')
     parser.add_argument('-c', '--channels', nargs='+', help='List of channels to extract. Channels should be in the format "CHANNEL_NUMBER:CHANNEL_NAME" with each channel seperated by a space.')
-    parser.add_argument('-f', '--files', nargs='+', required=True, help='The multichannel WAV files in sequential order.')
+    parser.add_argument('-f', '--files', nargs='+', help='The multichannel WAV files in sequential order. If this flag is not provided, we\'ll search for WAV files in the current directory.')
     parser.add_argument('-l', '--list', help='Text file that contains a list of channels. Channels should be in the format "CHANNEL_NUMBER:CHANNEL_NAME" with each channel seperated by a newline.')
     parser.add_argument('-o', '--output', default='Tracks', help='Output directory to create for final tracks. Default: ./Tracks')
     args = parser.parse_args()
@@ -34,7 +34,12 @@ def main():
         print('Output directory already exists! Exiting.')
         sys.exit(1)
 
-    files = args.files
+    # If --files was not used, we'll search the current directory.
+    if not args.files:
+        # Make sure we sort the files so they're in the correct order.
+        files = sorted([item for item in os.listdir() if item.lower().endswith('.wav')])
+    else:
+        files = args.files
     print('Multichannel files: %s' % files)
 
     # If we have multiple files, make a tempoary directory to store each segment of a channel.
