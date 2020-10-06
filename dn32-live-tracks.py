@@ -5,13 +5,14 @@ import sys
 import subprocess
 import shutil
 import atexit
+import csv
 
 
 def main():
     parser = argparse.ArgumentParser(description='A tool to extract only what you want from (potentially many) multichannel WAV files.')
     parser.add_argument('-c', '--channels', nargs='+', help='List of channels to extract. Channels should be in the format "CHANNEL_NUMBER:CHANNEL_NAME" with each channel seperated by a space.')
     parser.add_argument('-f', '--files', nargs='+', help='The multichannel WAV files in sequential order. If this flag is not provided, we\'ll search for WAV files in the current directory.')
-    parser.add_argument('-l', '--list', help='Text file that contains a list of channels. Channels should be in the format "CHANNEL_NUMBER:CHANNEL_NAME" with each channel seperated by a newline.')
+    parser.add_argument('-l', '--list', help='CSV file that contains a list of channels. Columns are: channel #, file #, file name.')
     parser.add_argument('-o', '--output', default='Tracks', help='Output directory to create for final tracks. Default: ./Tracks')
     args = parser.parse_args()
 
@@ -50,19 +51,23 @@ def main():
         # Make sure we delete our temporary directory no matter how we exit.
         atexit.register(shutil.rmtree, tmp_directory)
 
-    if args.list:
-        with open(args.list) as f:
-            channels_raw = f.read().splitlines()
-    else:
-        channels_raw = args.channels
-
     channels = []
-    for channel in channels_raw:
-        index, name = channel.split(':')
-        # We need to use zero-based indexing for channel numbers.
-        index = int(index) - 1
-        # Escape spaces for ffmpeg command.
-        channels.append((index, name.replace(' ', '\\ ')))
+    # We need to use zero-based indexing for channel numbers and escape spaces for our ffmpeg command.
+    if args.list:
+        with open(args.list) as stream:
+            for channel in csv.reader(stream):
+                index = int(channel[0]) - 1
+                file_number = str(channel[1])
+                # Some CSV editors will change '06' to '6' but we want the '0' for nice file sorting.
+                if len(file_number) == 1:
+                    file_number = '0' + file_number
+                file_name = file_number + '.' + channel[2].replace(' ', '\\ ')
+                channels.append((index, file_name))
+    else:
+        for channel in args.channels:
+            index, name = channel.split(':')
+            index = int(index) - 1
+            channels.append((index, name.replace(' ', '\\ ')))
     print('Channels: %s' % channels)
 
     # Find out where ffmpeg lives.
